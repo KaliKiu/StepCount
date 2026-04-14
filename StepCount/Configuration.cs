@@ -1,7 +1,15 @@
 using Dalamud.Configuration;
 using System;
+using System.Collections.Generic;
 
 namespace SamplePlugin;
+
+[Serializable]
+public class CharacterStats
+{
+    public double TotalSteps { get; set; } = 0;
+    public double TotalWalkingSeconds { get; set; } = 0;
+}
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -10,10 +18,15 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
-    public double TotalSteps { get; set; } = 0;
-    public double TotalWalkingSeconds { get; set; } = 0;
 
-    // The below exists just to make saving less cumbersome
+    public Dictionary<ulong, CharacterStats> CharacterData { get; set; } = new();
+    public CharacterStats GetStats(ulong cid)
+    {
+        if (!CharacterData.ContainsKey(cid))
+            CharacterData[cid] = new CharacterStats();
+
+        return CharacterData[cid];
+    }
     public void Save()
     {
         Plugin.PluginInterface.SavePluginConfig(this);

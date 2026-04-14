@@ -39,11 +39,14 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
+        var cid = Plugin.PlayerState.ContentId;
+        var stats = configuration.GetStats(cid);
+
         var configValue = configuration.SomePropertyToBeSavedAndWithADefault;
         if (ImGui.Button("Reset Steps"))
         {
-            configuration.TotalSteps = 0;
-            configuration.TotalWalkingSeconds = 0;
+            stats.TotalSteps = 0;
+            stats.TotalWalkingSeconds = 0;
             configuration.Save();
         }
     }

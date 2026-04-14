@@ -71,16 +71,15 @@ public sealed class Plugin : IDalamudPlugin
 
     public void OnUpdate(IFramework framework)
     {
-        if ((DateTime.Now - _lastCheck).TotalSeconds < 0.1)
-            return;
-        _lastCheck = DateTime.Now;
         StepCalc();
     }
 
     public void StepCalc()
     {
         var player = ClientState.LocalPlayer;
-        if (player == null) return;
+        var cid = ClientState.LocalContentId;
+
+        if (player == null || cid == 0) return;
 
         if (Condition[ConditionFlag.Mounted] ||
             Condition[ConditionFlag.InFlight] ||
@@ -109,12 +108,17 @@ public sealed class Plugin : IDalamudPlugin
 
             if (_distanceBuffer >= LalaStrideLength)
             {
-                Configuration.TotalSteps++;
-                Configuration.TotalWalkingSeconds += SecondsPerStep;
-                _distanceBuffer -= LalaStrideLength;
-                Log.Debug($"Step! Total: {Configuration.TotalSteps}");
 
-                if (Configuration.TotalSteps % 100 == 0)
+                var stats = Configuration.GetStats(cid);
+
+                stats.TotalSteps++;
+                stats.TotalWalkingSeconds += SecondsPerStep;
+
+                _distanceBuffer -= LalaStrideLength;
+
+                Log.Debug($"Step! Char: {cid} Total: {stats.TotalSteps}");
+
+                if (stats.TotalSteps % 100 == 0)
                 {
                     Configuration.Save();
                 }
