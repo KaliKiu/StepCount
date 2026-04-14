@@ -26,7 +26,7 @@ public sealed class Plugin : IDalamudPlugin
 
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
 
-    private const string CommandName = "/steps";
+    private const string CommandName = "/stepcount";
 
     public Configuration Configuration { get; init; }
 
@@ -56,7 +56,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "A useful message to display in steps!"
+            HelpMessage = "Open StepCount"
         });
 
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;

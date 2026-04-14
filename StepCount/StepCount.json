@@ -2,6 +2,7 @@
   "Author": "KaliKiu",
   "Name": "StepCount",
   "Punchline": "StepCounter for ffxiv",
+  "InternalName": "StepCount",
   "Description": "Counts the amount of steps and displays it",
   "ApplicableVersion": "any",
   "Tags": [
