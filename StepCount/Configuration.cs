@@ -1,4 +1,4 @@
-﻿using Dalamud.Configuration;
+using Dalamud.Configuration;
 using System;
 
 namespace SamplePlugin;
@@ -10,6 +10,8 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+    public double TotalSteps { get; set; } = 0;
+    public double TotalWalkingSeconds { get; set; } = 0;
 
     // The below exists just to make saving less cumbersome
     public void Save()
