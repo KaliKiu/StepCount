@@ -1,12 +1,13 @@
 {
-  "Author": "your name here",
-  "Name": "Sample Plugin",
-  "Punchline": "A short one-liner that shows up in /xlplugins.",
-  "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
+  "Author": "KaliKiu",
+  "Name": "StepCount",
+  "Punchline": "StepCounter for ffxiv",
+  "Description": "Counts the amount of steps and displays it",
   "ApplicableVersion": "any",
   "Tags": [
-    "sample",
+    "StepCount",
     "plugin",
-    "goats"
+    "count",
+    "steps"
   ]
 }

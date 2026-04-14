@@ -2,19 +2,13 @@
 <Project Sdk="Dalamud.NET.Sdk/14.0.2">
   <PropertyGroup>
     <Authors>KaliKiu</Authors>
-    <Version>0.0.0.1</Version>
+    <Version>1.0.0.0</Version>
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageProjectUrl>https://github.com/KaliKiu/StepCounter</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/KaliKiu/StepCount</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="..\Data\goat.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-    </Content>
-  </ItemGroup>
 </Project>
