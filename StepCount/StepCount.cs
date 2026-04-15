@@ -1,3 +1,4 @@
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.Toast;
@@ -8,6 +9,9 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using SamplePlugin.Windows;
 using System;
+using System.Threading;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 
@@ -23,8 +27,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
-
+    [PluginService] public static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
+    [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
 
     private const string CommandName = "/stepcount";
 
@@ -43,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
     private const float LalaStrideLength = 1.35f;
 
     const double SecondsPerStep = 0.2;
+
 
     public Plugin()
     {
@@ -66,13 +72,54 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
         Log.Information("Loading StepCounting..");
+
         Framework.Update += OnUpdate;
     }
 
     public void OnUpdate(IFramework framework)
     {
         StepCalc();
+        if (DateTime.Now - _lastCheck < TimeSpan.FromSeconds(1))
+        {
+            return;
+        }
+        _lastCheck = DateTime.Now;
+        Gambling();
     }
+
+    private bool _queuedLogout = false;
+
+    public void Gambling()
+    {
+        var cid = ClientState.LocalContentId;
+        CharacterStats stats = Configuration.GetStats(cid);
+        if (stats.GamblingMode)
+        {
+            Random dice = new Random();
+
+            if (Plugin.Condition[ConditionFlag.Jumping])
+            {
+                if (dice.Next(1, 1000000) == 3)
+                {
+                    Log.Debug("GAMBLEEEEE");
+                    Process.GetCurrentProcess().Kill();
+                }
+                if (dice.Next(1, 1000) == 1)
+                {
+                    Log.Debug("GAMBLEEEEE");
+                    Thread.Sleep(5000);
+                }
+                else
+                {
+                    Log.Debug("FREEZE FAILED");
+                }
+                Log.Debug("gamblefailed");
+                return;
+            }
+            Log.Debug("Not jumping");
+            return;
+        }
+        }
 
     public void StepCalc()
     {
@@ -125,6 +172,7 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
         _lastPosition = currentPos;
+        return;
     }
 
     public void Dispose()

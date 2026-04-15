@@ -10,5 +10,4 @@
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
-
 </Project>

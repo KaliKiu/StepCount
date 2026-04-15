@@ -49,5 +49,11 @@ public class ConfigWindow : Window, IDisposable
             stats.TotalWalkingSeconds = 0;
             configuration.Save();
         }
+        var gamble = stats.GamblingMode;
+        if (ImGui.Checkbox("Gambling Mode", ref gamble))
+        {
+            stats.GamblingMode = gamble;
+            configuration.Save();
+        }
     }
 }
