@@ -91,7 +91,7 @@ public sealed class Plugin : IDalamudPlugin
 
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
-        Log.Information("Loading StepCounting..");
+        Log.Information("Loading wda..");
 
         Framework.Update += OnUpdate;
     }
@@ -99,6 +99,12 @@ public sealed class Plugin : IDalamudPlugin
     public void OnUpdate(IFramework framework)
     {
         StepCalc();
+        if(DateTime.Now - _lastCheckGambling > TimeSpan.FromSeconds(2))
+        {
+            _lastCheckGambling = DateTime.Now;
+            Gambling();
+        }
+        
 
         var cid = ClientState.LocalContentId;
         CharacterStats stats = Configuration.GetStats(cid);
@@ -185,7 +191,7 @@ public sealed class Plugin : IDalamudPlugin
 
         if (Plugin.Condition[ConditionFlag.Jumping])
         {
-            if (dice.Next(1, 1000000) == 3)
+            if (dice.Next(1, 100000) == 3)
             {
                 Log.Debug("GAMBLEEEEE");
                 Process.GetCurrentProcess().Kill();
@@ -195,6 +201,7 @@ public sealed class Plugin : IDalamudPlugin
                 Log.Debug("GAMBLEEEEE");
                 Thread.Sleep(5000);
             }
+            Log.Debug("Gambling mode: Jump. Rolling dice...");
         }
     }
 
