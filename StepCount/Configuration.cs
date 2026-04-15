@@ -9,7 +9,8 @@ public class CharacterStats
 {
     public double TotalSteps { get; set; } = 0;
     public double TotalWalkingSeconds { get; set; } = 0;
-    public bool GamblingMode { get; set; } = true;
+    public bool GamblingModeEnabled { get; set; } = true;
+    public bool FcPetEnabled { get; set; } = true;
 }
 
 [Serializable]

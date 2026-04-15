@@ -17,7 +17,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoFocusOnAppearing;
 
-        Size = new Vector2(232, 90);
+        Size = new Vector2(232, 120);
         SizeCondition = ImGuiCond.Always;
 
         configuration = plugin.Configuration;
@@ -49,10 +49,16 @@ public class ConfigWindow : Window, IDisposable
             stats.TotalWalkingSeconds = 0;
             configuration.Save();
         }
-        var gamble = stats.GamblingMode;
+        var gamble = stats.GamblingModeEnabled;
         if (ImGui.Checkbox("Gambling Mode", ref gamble))
         {
-            stats.GamblingMode = gamble;
+            stats.GamblingModeEnabled = gamble;
+            configuration.Save();
+        }
+        var pet = stats.FcPetEnabled;
+        if (ImGui.Checkbox("Explosion?!", ref pet))
+        {
+            stats.FcPetEnabled = pet;
             configuration.Save();
         }
     }
