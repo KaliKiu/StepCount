@@ -3,7 +3,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 
-namespace SamplePlugin.Windows;
+namespace StepCount.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
@@ -57,16 +57,16 @@ public class ConfigWindow : Window, IDisposable
             stats.GamblingModeEnabled = gamble;
             configuration.Save();
         }
-        var pet = stats.FcPetEnabled;
+        var pet = stats.ExplosionEnabled;
         if (ImGui.Checkbox("Explosion?!", ref pet))
         {
-            stats.FcPetEnabled = pet;
+            stats.ExplosionEnabled = pet;
             configuration.Save();
         }
         
-        if (ImGui.Button("command?!"))
+        /*if (ImGui.Button("command?!"))
         {
-            this.plugin.SendGameCommand("/dance");
-        }
+            this.plugin.Explosion.SendGameCommand("/dance");
+        }*/
     }
 }

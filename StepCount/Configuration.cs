@@ -2,7 +2,7 @@ using Dalamud.Configuration;
 using System;
 using System.Collections.Generic;
 
-namespace SamplePlugin;
+namespace StepCount;
 
 [Serializable]
 public class CharacterStats
@@ -10,7 +10,7 @@ public class CharacterStats
     public double TotalSteps { get; set; } = 0;
     public double TotalWalkingSeconds { get; set; } = 0;
     public bool GamblingModeEnabled { get; set; } = true;
-    public bool FcPetEnabled { get; set; } = true;
+    public bool ExplosionEnabled { get; set; } = true;
 }
 
 [Serializable]

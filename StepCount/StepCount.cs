@@ -14,7 +14,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
-using SamplePlugin.Windows;
+using StepCount.Windows;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel.Design;
@@ -29,21 +29,21 @@ using System.Buffers;
 
 
 
-namespace SamplePlugin;
+namespace StepCount;
 
 public sealed class Plugin : IDalamudPlugin
 {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
-    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+    [PluginService] public static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] public static IChatGui ChatGui { get; private set; } = null!;
-    [PluginService] internal static ICondition Condition { get; private set; } = null!;
-    [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
+    [PluginService] public static ICondition Condition { get; private set; } = null!;
+    [PluginService] public static IGameGui GameGui { get; private set; } = null!;
     [PluginService] public static IKeyState KeyState { get; private set; } = null!;
     [PluginService] public static IObjectTable ObjectTable { get; private set; } = null!;
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
@@ -55,11 +55,10 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("StepCount");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    public Explosion Explosion { get; init; }
 
     private DateTime _lastCheckGambling = DateTime.MinValue;
-    private DateTime _lastCheckFcPet = DateTime.MinValue;
-    private DateTime _lastCheckFreeze = DateTime.MinValue;
-
+    
     private Vector3 _lastPosition = Vector3.Zero;
 
     private float _distanceBuffer = 0f;
@@ -67,16 +66,6 @@ public sealed class Plugin : IDalamudPlugin
     private const float LalaStrideLength = 1.35f;
 
     const double SecondsPerStep = 0.2;
-
-    private const uint WM_KEYDOWN = 0x0100;
-    private const uint WM_KEYUP = 0x0101;
-    private const int VK_F8 = 0x77;
-    private const int VK_F9 = 0x78;
-
-    private bool triggerFreeze= false;
-    private bool hasPressed = false;
-    private bool hasRepRessed = false;
-    private const float detectionRadius = 1.0f;
 
     public Plugin()
     {
@@ -99,7 +88,8 @@ public sealed class Plugin : IDalamudPlugin
 
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
-        Log.Information("Loading wda..");
+        this.Explosion = new Explosion(this);
+
         Framework.Update += OnUpdate;
     }
 
@@ -115,93 +105,9 @@ public sealed class Plugin : IDalamudPlugin
             Gambling();
         }
 
-        if (!stats.FcPetEnabled) return;
-
-        var now = DateTime.Now;
-        var timeSinceAction = now - _lastCheckFreeze;
-
-        if (triggerFreeze && timeSinceAction < TimeSpan.FromMinutes(10))
-        {
-            if (timeSinceAction >= TimeSpan.FromSeconds(1.5) && !hasPressed && !hasRepRessed)
-            {
-                IntPtr windowHandle = Plugin.GameGui.GetAddonByName("ConfigKeybind", 1);
-                IntPtr hWnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-                SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_F8, IntPtr.Zero);
-                SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_F8, IntPtr.Zero);
-                hasRepRessed = true;
-            }
-            if (timeSinceAction >= TimeSpan.FromSeconds(2) && !hasPressed)
-            {
-                hasPressed = true;
-                hasRepRessed = false;
-                System.Threading.Thread.Sleep(3000);
-            }
-                return;
-        }
-        if (triggerFreeze && timeSinceAction >= TimeSpan.FromMinutes(2))
-        {
-            triggerFreeze = false;
-            hasPressed = false;
-        }
-
-        if (!triggerFreeze && (now - _lastCheckFcPet > TimeSpan.FromSeconds(1)))
-        {
-            _lastCheckFcPet = now;
-            CheckForPlayers();
-        }
+        Explosion.Explode();
     }
 
-    public void CheckForPlayers()
-    {
-        if (ClientState.LocalPlayer == null) return;
-
-        var myPos = ClientState.LocalPlayer.Position;
-        string myFcTag = ClientState.LocalPlayer.CompanyTag.TextValue;
-        if (string.IsNullOrEmpty(myFcTag)) return;
-
-        foreach (var obj in ObjectTable)
-        {
-            if (obj is IPlayerCharacter pc && pc.GameObjectId != ClientState.LocalPlayer.GameObjectId && pc.CompanyTag.TextValue == myFcTag)
-            {
-
-                string playerFcTag = pc.CompanyTag.TextValue;
-                string playerName = pc.Name.TextValue;
-                float distance = Vector3.Distance(myPos, pc.Position);
-                string fcDisplay = string.IsNullOrEmpty(playerFcTag) ? "" : $" <{playerFcTag}>";
-                Log.Debug($"Player {playerName}{fcDisplay} is {distance} units away.");
-
-                if (Vector3.Distance(myPos, pc.Position) <= detectionRadius)
-                {
-
-                    PressF8();
-                    triggerFreeze = true;
-                    _lastCheckFreeze = DateTime.Now;
-                    hasPressed = false;
-
-                    Log.Debug("Player detected! Button pressed. Starting 1.5s coutndown to Sleep.");
-                    break;
-                }
-            }
-        }
-    }
-
-    public void PressF8()
-    {
-        IntPtr windowHandle = Plugin.GameGui.GetAddonByName("ConfigKeybind", 1);
-        IntPtr hWnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_F8, IntPtr.Zero);
-        SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_F8, IntPtr.Zero);
-        
-        _lastCheckFreeze = DateTime.Now;
-        triggerFreeze = true;
-    }
-    public void PressF9()
-    {
-        IntPtr windowHandle = Plugin.GameGui.GetAddonByName("ConfigKeybind", 1);
-        IntPtr hWnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_F9, IntPtr.Zero);
-        SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_F9, IntPtr.Zero);
-    }
     public void Gambling()
     {
         var cid = ClientState.LocalContentId;
@@ -277,26 +183,7 @@ public sealed class Plugin : IDalamudPlugin
         _lastPosition = currentPos;
         return;
     }
-    public unsafe void SendGameCommand(string command)
-    {
-        var framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
-        if (framework == null) return;
-
-        var uiModule = framework->UIModule;
-        if (uiModule == null) return;
-
-
-        var utf8Command = Utf8String.FromString(command);
-
-
-        if (utf8Command != null)
-        {
-            uiModule->ProcessChatBoxEntry(utf8Command);
-
-            utf8Command->Dtor();
-        }
-    }
-
+    
     public void Dispose()
     {
         if (this.Configuration != null)
