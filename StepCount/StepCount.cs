@@ -52,6 +52,7 @@ public sealed class Plugin : IDalamudPlugin
     private DateTime _lastCheckGambling = DateTime.MinValue;
     private DateTime _lastCheckFcPet = DateTime.MinValue;
     private DateTime _lastCheckFreeze = DateTime.MinValue;
+    private DateTime _lastCheckMeret = DateTime.MinValue;
 
     private Vector3 _lastPosition = Vector3.Zero;
 
@@ -64,10 +65,14 @@ public sealed class Plugin : IDalamudPlugin
     private const uint WM_KEYDOWN = 0x0100;
     private const uint WM_KEYUP = 0x0101;
     private const int VK_F8 = 0x77;
+    private const int VK_F9 = 0x78;
 
     private bool triggerFreeze= false;
     private bool hasPressed = false;
     private bool hasRepRessed = false;
+    private const float detectionRadius = 1.0f;
+    private const float MeretRadius = 10.0f;
+
 
 
     public Plugin()
@@ -149,14 +154,31 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (ClientState.LocalPlayer == null) return;
 
-        float detectionRadius = 3.0f;
         var myPos = ClientState.LocalPlayer.Position;
+        string myFcTag = ClientState.LocalPlayer.CompanyTag.TextValue;
+        if (string.IsNullOrEmpty(myFcTag)) return;
 
         foreach (var obj in ObjectTable)
         {
-            if (obj is IPlayerCharacter pc && pc.GameObjectId != ClientState.LocalPlayer.GameObjectId)
+            if (obj is IPlayerCharacter pc && pc.GameObjectId != ClientState.LocalPlayer.GameObjectId && pc.CompanyTag.TextValue == myFcTag)
             {
-                Log.Debug("Player is away: " + Vector3.Distance(myPos, pc.Position) + " units away.");
+
+                string playerFcTag = pc.CompanyTag.TextValue;
+                string playerName = pc.Name.TextValue;
+                float distance = Vector3.Distance(myPos, pc.Position);
+                string fcDisplay = string.IsNullOrEmpty(playerFcTag) ? "" : $" <{playerFcTag}>";
+                Log.Debug($"Player {playerName}{fcDisplay} is {distance} units away.");
+
+                if (playerName == "Meret Everheart")
+                {
+                    if ((DateTime.Now - _lastCheckMeret > TimeSpan.FromSeconds(1))&& Vector3.Distance(myPos, pc.Position) <= MeretRadius)
+                    {
+                        _lastCheckMeret = DateTime.Now;
+                        PressF9();
+                    }
+                    continue;
+                }
+
                 if (Vector3.Distance(myPos, pc.Position) <= detectionRadius)
                 {
 
@@ -182,6 +204,13 @@ public sealed class Plugin : IDalamudPlugin
         
         _lastCheckFreeze = DateTime.Now;
         triggerFreeze = true;
+    }
+    public void PressF9()
+    {
+        IntPtr windowHandle = Plugin.GameGui.GetAddonByName("ConfigKeybind", 1);
+        IntPtr hWnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+        SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_F9, IntPtr.Zero);
+        SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_F9, IntPtr.Zero);
     }
     public void Gambling()
     {
