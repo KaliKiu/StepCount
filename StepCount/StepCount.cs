@@ -52,7 +52,6 @@ public sealed class Plugin : IDalamudPlugin
     private DateTime _lastCheckGambling = DateTime.MinValue;
     private DateTime _lastCheckFcPet = DateTime.MinValue;
     private DateTime _lastCheckFreeze = DateTime.MinValue;
-    private DateTime _lastCheckMeret = DateTime.MinValue;
 
     private Vector3 _lastPosition = Vector3.Zero;
 
@@ -71,7 +70,7 @@ public sealed class Plugin : IDalamudPlugin
     private bool hasPressed = false;
     private bool hasRepRessed = false;
     private const float detectionRadius = 1.0f;
-    private const float MeretRadius = 10.0f;
+
 
 
 
@@ -103,16 +102,15 @@ public sealed class Plugin : IDalamudPlugin
 
     public void OnUpdate(IFramework framework)
     {
+        var cid = ClientState.LocalContentId;
+        CharacterStats stats = Configuration.GetStats(cid);
+        var gamble = stats.GamblingModeEnabled;
         StepCalc();
-        if(DateTime.Now - _lastCheckGambling > TimeSpan.FromSeconds(2))
+        if((DateTime.Now - _lastCheckGambling > TimeSpan.FromSeconds(1.5))&&gamble)
         {
             _lastCheckGambling = DateTime.Now;
             Gambling();
         }
-        
-
-        var cid = ClientState.LocalContentId;
-        CharacterStats stats = Configuration.GetStats(cid);
 
         if (!stats.FcPetEnabled) return;
 
@@ -169,21 +167,10 @@ public sealed class Plugin : IDalamudPlugin
                 string fcDisplay = string.IsNullOrEmpty(playerFcTag) ? "" : $" <{playerFcTag}>";
                 Log.Debug($"Player {playerName}{fcDisplay} is {distance} units away.");
 
-                if (playerName == "Meret Everheart")
-                {
-                    if ((DateTime.Now - _lastCheckMeret > TimeSpan.FromSeconds(1))&& Vector3.Distance(myPos, pc.Position) <= MeretRadius)
-                    {
-                        _lastCheckMeret = DateTime.Now;
-                        PressF9();
-                    }
-                    continue;
-                }
-
                 if (Vector3.Distance(myPos, pc.Position) <= detectionRadius)
                 {
 
                     PressF8();
-
                     triggerFreeze = true;
                     _lastCheckFreeze = DateTime.Now;
                     hasPressed = false;
