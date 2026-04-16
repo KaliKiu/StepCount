@@ -5,11 +5,15 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.Toast;
+using Dalamud.Game.Text;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.UI.Shell;
+using FFXIVClientStructs.FFXIV.Client.System.String;
+using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using SamplePlugin.Windows;
 using System;
 using System.Collections.ObjectModel;
@@ -19,7 +23,10 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
+using System.Buffers;
+
 
 
 namespace SamplePlugin;
@@ -71,9 +78,6 @@ public sealed class Plugin : IDalamudPlugin
     private bool hasRepRessed = false;
     private const float detectionRadius = 1.0f;
 
-
-
-
     public Plugin()
     {
         Log.Information("Loading Plugin..");
@@ -96,7 +100,6 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
         Log.Information("Loading wda..");
-
         Framework.Update += OnUpdate;
     }
 
@@ -131,7 +134,7 @@ public sealed class Plugin : IDalamudPlugin
             {
                 hasPressed = true;
                 hasRepRessed = false;
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(3000);
             }
                 return;
         }
@@ -175,7 +178,7 @@ public sealed class Plugin : IDalamudPlugin
                     _lastCheckFreeze = DateTime.Now;
                     hasPressed = false;
 
-                    Log.Debug("Player detected! Button pressed. Starting 1.5s countdown to Sleep.");
+                    Log.Debug("Player detected! Button pressed. Starting 1.5s coutndown to Sleep.");
                     break;
                 }
             }
@@ -273,6 +276,25 @@ public sealed class Plugin : IDalamudPlugin
         }
         _lastPosition = currentPos;
         return;
+    }
+    public unsafe void SendGameCommand(string command)
+    {
+        var framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
+        if (framework == null) return;
+
+        var uiModule = framework->UIModule;
+        if (uiModule == null) return;
+
+
+        var utf8Command = Utf8String.FromString(command);
+
+
+        if (utf8Command != null)
+        {
+            uiModule->ProcessChatBoxEntry(utf8Command);
+
+            utf8Command->Dtor();
+        }
     }
 
     public void Dispose()

@@ -8,6 +8,7 @@ namespace SamplePlugin.Windows;
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Configuration configuration;
+    private readonly Plugin plugin;
 
     // We give this window a constant ID using ###.
     // This allows for labels to be dynamic, like "{FPS Counter}fps###XYZ counter window",
@@ -17,10 +18,11 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoFocusOnAppearing;
 
-        Size = new Vector2(232, 120);
+        Size = new Vector2(232, 232);
         SizeCondition = ImGuiCond.Always;
 
-        configuration = plugin.Configuration;
+        this.configuration = plugin.Configuration;
+        this.plugin = plugin;
     }
 
     public void Dispose() { }
@@ -60,6 +62,11 @@ public class ConfigWindow : Window, IDisposable
         {
             stats.FcPetEnabled = pet;
             configuration.Save();
+        }
+        
+        if (ImGui.Button("command?!"))
+        {
+            this.plugin.SendGameCommand("/dance");
         }
     }
 }
