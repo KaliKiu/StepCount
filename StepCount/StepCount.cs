@@ -26,6 +26,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Buffers;
+using System.Diagnostics.Metrics;
 
 
 
@@ -47,25 +48,30 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] public static IKeyState KeyState { get; private set; } = null!;
     [PluginService] public static IObjectTable ObjectTable { get; private set; } = null!;
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
     private const string CommandName = "/stepcount";
 
     public Configuration Configuration { get; init; }
-
     public readonly WindowSystem WindowSystem = new("StepCount");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
     public Explosion Explosion { get; init; }
-
+    public Gambling Gambling { get; init; }
     private DateTime _lastCheckGambling = DateTime.MinValue;
-    
+    private DateTime _lastBotCheck = DateTime.MinValue;
+    private DateTime _lastCommand = DateTime.MinValue;
     private Vector3 _lastPosition = Vector3.Zero;
-
     private float _distanceBuffer = 0f;
-
     private const float LalaStrideLength = 1.35f;
-
     const double SecondsPerStep = 0.2;
+
+    private const uint WM_KEYDOWN = 0x0100;
+    private const uint WM_KEYUP = 0x0101;
+    private const int VK_W = 0x57;
+    private const int VK_4 = 0x34;
+    private int count = 1;
+    private bool _isKeyDown = false;
 
     public Plugin()
     {
@@ -95,38 +101,70 @@ public sealed class Plugin : IDalamudPlugin
 
     public void OnUpdate(IFramework framework)
     {
+        StepCalc();
+
         var cid = ClientState.LocalContentId;
         CharacterStats stats = Configuration.GetStats(cid);
         var gamble = stats.GamblingModeEnabled;
-        StepCalc();
+        
         if((DateTime.Now - _lastCheckGambling > TimeSpan.FromSeconds(1.5))&&gamble)
         {
             _lastCheckGambling = DateTime.Now;
-            Gambling();
+            //Gambling.Gamble();
         }
+        if ((DateTime.Now - _lastBotCheck > TimeSpan.FromSeconds(0.05))&& gamble)
+        {
+            _lastBotCheck = DateTime.Now;
+            Bot();
+        }
+
 
         Explosion.Explode();
     }
 
-    public void Gambling()
+    public void Bot()
     {
-        var cid = ClientState.LocalContentId;
-        CharacterStats stats = Configuration.GetStats(cid);
-        Random dice = new Random();
+        IntPtr hWnd = Process.GetCurrentProcess().MainWindowHandle;
+        if (hWnd == IntPtr.Zero) return;
 
-        if (Plugin.Condition[ConditionFlag.Jumping])
+        // Determine which key we are talking about
+        int currentKey = (count % 2 == 0) ? VK_W : VK_4;
+
+        if (!_isKeyDown)
         {
-            if (dice.Next(1, 100000) == 3)
-            {
-                Log.Debug("GAMBLEEEEE");
-                Process.GetCurrentProcess().Kill();
-            }
-            if (dice.Next(1, 1000) == 1)
-            {
-                Log.Debug("GAMBLEEEEE");
-                Thread.Sleep(5000);
-            }
-            Log.Debug("Gambling mode: Jump. Rolling dice...");
+            // First pass: Press the key down
+            PostMessage(hWnd, WM_KEYDOWN, (IntPtr)currentKey, IntPtr.Zero);
+            _isKeyDown = true;
+            Log.Debug($"Pressing: {currentKey}");
+        }
+        else
+        {
+            // Second pass (0.2s later): Release the key
+            PostMessage(hWnd, WM_KEYUP, (IntPtr)currentKey, IntPtr.Zero);
+            _isKeyDown = false;
+            count++; // Only move to the next key AFTER we released the current one
+            Log.Debug($"Releasing: {currentKey}");
+        }
+        if ((DateTime.Now - _lastCommand > TimeSpan.FromSeconds(3)))
+        {
+            _lastCommand = DateTime.Now;
+            SendGameCommand("/fc meow");
+        }
+    }
+
+    public unsafe void SendGameCommand(string command)
+    {
+        var framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
+        if (framework == null) return;
+
+        var uiModule = framework->UIModule;
+        if (uiModule == null) return;
+
+        var utf8Command = Utf8String.FromString(command);
+        if (utf8Command != null)
+        {
+            uiModule->ProcessChatBoxEntry(utf8Command);
+            utf8Command->Dtor();
         }
     }
 
@@ -164,15 +202,11 @@ public sealed class Plugin : IDalamudPlugin
 
             if (_distanceBuffer >= LalaStrideLength)
             {
-
                 var stats = Configuration.GetStats(cid);
-
                 stats.TotalSteps++;
                 stats.TotalWalkingSeconds += SecondsPerStep;
 
                 _distanceBuffer -= LalaStrideLength;
-
-                
 
                 if (stats.TotalSteps % 100 == 0)
                 {
