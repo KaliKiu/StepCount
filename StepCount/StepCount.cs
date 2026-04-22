@@ -73,6 +73,7 @@ public sealed class Plugin : IDalamudPlugin
     private int count = 1;
     private bool _isKeyDown = false;
 
+    //we chillin? 
     public Plugin()
     {
         Log.Information("Loading Plugin..");
