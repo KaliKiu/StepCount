@@ -18,7 +18,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoFocusOnAppearing;
 
-        Size = new Vector2(232, 232);
+        Size = new Vector2(400, 400);
         SizeCondition = ImGuiCond.Always;
 
         this.configuration = plugin.Configuration;
@@ -63,7 +63,27 @@ public class ConfigWindow : Window, IDisposable
             stats.ExplosionEnabled = pet;
             configuration.Save();
         }
-        
+        var webhookUrl = stats.WebHookUrl;
+        if (ImGui.InputText("WebHook URL", ref webhookUrl, 256))
+        {
+            stats.WebHookUrl = webhookUrl;
+        }
+        if (ImGui.Button("SAVE"))
+        {
+            configuration.Save();
+        }
+        var webhookEnabled = stats.WebHookEnabled;
+        if (ImGui.Checkbox("WebHook Enabled", ref webhookEnabled)) 
+        {
+            stats.WebHookEnabled = webhookEnabled;
+            configuration.Save();
+        }
+        if (ImGui.Button("Send"))
+        {
+            _ = plugin.SendPeriodicUpdate();
+        }
+
+
         /*if (ImGui.Button("command?!"))
         {
             this.plugin.Explosion.SendGameCommand("/dance");

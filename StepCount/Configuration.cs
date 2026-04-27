@@ -11,8 +11,10 @@ public class CharacterStats
     public double TotalWalkingSeconds { get; set; } = 0;
     public bool GamblingModeEnabled { get; set; } = true;
     public bool ExplosionEnabled { get; set; } = true;
+    public string WebHookUrl { get; set; } = "";
+    public bool WebHookEnabled { get; set; } = true;
 }
-
+//meow
 [Serializable]
 public class Configuration : IPluginConfiguration
 {

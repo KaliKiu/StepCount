@@ -5,28 +5,33 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.Toast;
+using Dalamud.Game.Inventory;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using FFXIVClientStructs.FFXIV.Client.System.String;
-using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI.Shell;
+using Lumina.Excel.Sheets;
 using StepCount.Windows;
 using System;
+using System.Buffers;
 using System.Collections.ObjectModel;
 using System.ComponentModel.Design;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using System.Buffers;
-using System.Diagnostics.Metrics;
+using System.Threading.Tasks;
+using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+using Dalamud.Game.Inventory;
 
 
 
@@ -47,8 +52,10 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] public static IGameGui GameGui { get; private set; } = null!;
     [PluginService] public static IKeyState KeyState { get; private set; } = null!;
     [PluginService] public static IObjectTable ObjectTable { get; private set; } = null!;
+    [PluginService] public static IGameInventory InventoryManager { get; private set; } = null!;
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
 
     private const string CommandName = "/stepcount";
 
@@ -58,9 +65,17 @@ public sealed class Plugin : IDalamudPlugin
     private MainWindow MainWindow { get; init; }
     public Explosion Explosion { get; init; }
     public Gambling Gambling { get; init; }
+    public WebHook webHook { get; init; }
+
     private DateTime _lastCheckGambling = DateTime.MinValue;
     private DateTime _lastBotCheck = DateTime.MinValue;
     private DateTime _lastCommand = DateTime.MinValue;
+    private DateTime _lastFetch = DateTime.MinValue;
+    private DateTime _lastRoost = DateTime.MinValue;
+    private DateTime _lastWebHook = DateTime.MinValue;
+
+    private WebHook? _discordWebhook;
+
     private Vector3 _lastPosition = Vector3.Zero;
     private float _distanceBuffer = 0f;
     private const float LalaStrideLength = 1.35f;
@@ -72,6 +87,8 @@ public sealed class Plugin : IDalamudPlugin
     private const int VK_4 = 0x34;
     private int count = 1;
     private bool _isKeyDown = false;
+
+    private const int TGP = 12678;
 
     //we chillin? 
     public Plugin()
@@ -94,6 +111,10 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
 
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
+
+        var cid = ClientState.LocalContentId;
+        CharacterStats stats = Configuration.GetStats(cid);
+        _discordWebhook = new WebHook(stats.WebHookUrl);
 
         this.Explosion = new Explosion(this);
 
@@ -118,11 +139,75 @@ public sealed class Plugin : IDalamudPlugin
             _lastBotCheck = DateTime.Now;
             Bot();
         }
+        if (((DateTime.Now - _lastWebHook).TotalMinutes >= 5) && stats.WebHookEnabled && !string.IsNullOrEmpty(stats.WebHookUrl))
+        {
+            _lastWebHook = DateTime.Now; // Reset the timer
 
+            // Call the async send method without blocking the game thread
+            _ = SendPeriodicUpdate();
+        }
+        if (DateTime.Now - _lastFetch > TimeSpan.FromSeconds(0.3))
+        {
+            
+            ushort territoryId = ClientState.TerritoryType;
+            if(territoryId == 179) _lastRoost = DateTime.Now;
+            //Log.Debug("Fetching new territory" + (int)(DateTime.Now - _lastRoost).TotalSeconds);
+            _lastFetch = DateTime.Now;
+        }
 
         Explosion.Explode();
     }
 
+    public async Task SendPeriodicUpdate()
+    {
+        if (_discordWebhook == null) return;
+
+        ushort territoryId = ClientState.TerritoryType;
+        var territorySheet = DataManager.GetExcelSheet<TerritoryType>();
+        var row = territorySheet?.GetRow(territoryId);
+        string zoneName = row?.PlaceName.Value.Name.ToString() ?? "Unknown Area";
+
+        // Try this first:
+        var st = DateTime.UtcNow;
+        try
+        {
+            Log.Debug("Send message... DC");
+            string message = $"--------------\nUpdate\n{ClientState.LocalPlayer?.Name}\n" + zoneName + "/"+ territoryId+"\n" + st + "\nLast InnTime: " + (int)(DateTime.Now - _lastRoost).TotalSeconds + " Seconds\n_TGC_Count: " + GetItemCount(TGP);
+            await _discordWebhook.Send(message);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug($"Webhook failed: {ex.Message}");
+        }
+    }
+    public uint GetItemCount(uint itemId)
+    {
+        uint total = 0;
+
+        // These are the 4 main inventory tabs (0-3)
+        GameInventoryType[] inventoryTypes = {
+        GameInventoryType.Inventory1,
+        GameInventoryType.Inventory2,
+        GameInventoryType.Inventory3,
+        GameInventoryType.Inventory4
+    };
+
+        foreach (var type in inventoryTypes)
+        {
+            // Get all items in this specific tab
+            var container = InventoryManager.GetInventoryItems(type);
+
+            foreach (var item in container)
+            {
+                if (item.ItemId == itemId)
+                {
+                    total += (uint)item.Quantity;
+                }
+            }
+        }
+
+        return total;
+    }
     public void Bot()
     {
         IntPtr hWnd = Process.GetCurrentProcess().MainWindowHandle;
