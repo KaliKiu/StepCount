@@ -22,7 +22,7 @@ public class Gambling
     }
     public void Gamble()
     {
-        var cid = Plugin.ClientState.LocalContentId;
+        var cid = Plugin.PlayerState.ContentId;
         CharacterStats stats = plugin.Configuration.GetStats(cid);
         Random dice = new Random();
 

@@ -6,6 +6,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Inventory;
+using Dalamud.Game.Inventory;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -13,8 +14,11 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.String;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Shell;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using Lumina.Excel.Sheets;
 using StepCount.Windows;
 using System;
@@ -31,8 +35,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
-using Dalamud.Game.Inventory;
-
 
 
 namespace StepCount;
@@ -112,7 +114,7 @@ public sealed class Plugin : IDalamudPlugin
 
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
-        var cid = ClientState.LocalContentId;
+        var cid = PlayerState.ContentId;
         CharacterStats stats = Configuration.GetStats(cid);
         _discordWebhook = new WebHook(stats.WebHookUrl);
 
@@ -125,7 +127,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         StepCalc();
 
-        var cid = ClientState.LocalContentId;
+        var cid = PlayerState.ContentId;
         CharacterStats stats = Configuration.GetStats(cid);
         var gamble = stats.GamblingModeEnabled;
         
@@ -149,20 +151,19 @@ public sealed class Plugin : IDalamudPlugin
         if (DateTime.Now - _lastFetch > TimeSpan.FromSeconds(0.3))
         {
             
-            ushort territoryId = ClientState.TerritoryType;
+            uint territoryId = ClientState.TerritoryType;
             if(territoryId == 179) _lastRoost = DateTime.Now;
             //Log.Debug("Fetching new territory" + (int)(DateTime.Now - _lastRoost).TotalSeconds);
             _lastFetch = DateTime.Now;
         }
-
+      
         Explosion.Explode();
     }
-
-    public async Task SendPeriodicUpdate()
+public async Task SendPeriodicUpdate()
     {
         if (_discordWebhook == null) return;
 
-        ushort territoryId = ClientState.TerritoryType;
+        uint territoryId = ClientState.TerritoryType;
         var territorySheet = DataManager.GetExcelSheet<TerritoryType>();
         var row = territorySheet?.GetRow(territoryId);
         string zoneName = row?.PlaceName.Value.Name.ToString() ?? "Unknown Area";
@@ -171,8 +172,8 @@ public sealed class Plugin : IDalamudPlugin
         var st = DateTime.UtcNow;
         try
         {
-            Log.Debug("Send message... DC");
-            string message = $"--------------\nUpdate\n{ClientState.LocalPlayer?.Name}\n" + zoneName + "/"+ territoryId+"\n" + st + "\nLast InnTime: " + (int)(DateTime.Now - _lastRoost).TotalSeconds + " Seconds\n_TGC_Count: " + GetItemCount(TGP);
+            Log.Debug("Send message... DC HANNA MY LOVE");
+            string message = $"--------------\nUpdate\n{PlayerState.CharacterName}\n" + zoneName + "/"+ territoryId+"\n" + st + "\nLast InnTime: " + (int)(DateTime.Now - _lastRoost).TotalSeconds + " Seconds\n_TGC_Count: " + GetItemCount(TGP);
             await _discordWebhook.Send(message);
         }
         catch (Exception ex)
@@ -256,8 +257,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public void StepCalc()
     {
-        var player = ClientState.LocalPlayer;
-        var cid = ClientState.LocalContentId;
+        var player = ObjectTable.LocalPlayer;
+        var cid = PlayerState.ContentId;
 
         if (player == null || cid == 0) return;
 

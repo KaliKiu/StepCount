@@ -35,7 +35,7 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         // Access ClientState through the plugin reference
-        var cid = Plugin.ClientState.LocalContentId;
+        var cid = Plugin.PlayerState.ContentId;
 
         // If we aren't fully logged in, don't draw anything to avoid errors
         if (cid == 0)

@@ -49,9 +49,9 @@ public class Explosion
     public void Explode()
     {
         // Use Plugin.ClientState instead of local ClientState
-        if (Plugin.ClientState.LocalPlayer == null) return;
+        if (Plugin.ObjectTable.LocalPlayer == null) return;
 
-        var cid = Plugin.ClientState.LocalContentId;
+        var cid = Plugin.PlayerState.ContentId;
         CharacterStats stats = plugin.Configuration.GetStats(cid);
 
         if (!stats.ExplosionEnabled) return;
@@ -92,16 +92,16 @@ public class Explosion
 
     public void CheckForPlayers()
     {
-        if (Plugin.ClientState.LocalPlayer == null) return;
+        if (Plugin.ObjectTable.LocalPlayer == null) return;
 
-        var myPos = Plugin.ClientState.LocalPlayer.Position;
-        string myFcTag = Plugin.ClientState.LocalPlayer.CompanyTag.TextValue;
+        var myPos = Plugin.ObjectTable.LocalPlayer.Position;
+        string myFcTag = Plugin.ObjectTable.LocalPlayer.CompanyTag.TextValue;
         if (string.IsNullOrEmpty(myFcTag)) return;
 
         // Use Plugin.ObjectTable
         foreach (var obj in Plugin.ObjectTable)
         {
-            if (obj is IPlayerCharacter pc && pc.GameObjectId != Plugin.ClientState.LocalPlayer.GameObjectId && pc.CompanyTag.TextValue == myFcTag)
+            if (obj is IPlayerCharacter pc && pc.GameObjectId != Plugin.ObjectTable.LocalPlayer.GameObjectId && pc.CompanyTag.TextValue == myFcTag)
             {
                 float distance = Vector3.Distance(myPos, pc.Position);
                 Plugin.Log.Debug($"Player {pc.Name} <{pc.CompanyTag.TextValue}> is {distance:F2} units away.");
