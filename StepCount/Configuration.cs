@@ -13,6 +13,7 @@ public class CharacterStats
     public bool ExplosionEnabled { get; set; } = true;
     public string WebHookUrl { get; set; } = "";
     public bool WebHookEnabled { get; set; } = true;
+    public int TotalGilMade { get; set; } = 0;
 }
 //meow
 [Serializable]

@@ -1,4 +1,5 @@
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.Chat;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -8,6 +9,7 @@ using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
@@ -17,8 +19,8 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using Lumina.Excel.Sheets;
 using StepCount.Windows;
 using System;
@@ -32,6 +34,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using FFXIVFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
@@ -121,6 +124,50 @@ public sealed class Plugin : IDalamudPlugin
         this.Explosion = new Explosion(this);
 
         Framework.Update += OnUpdate;
+        ChatGui.ChatMessage += OnChatMessage;
+    }
+
+    private void OnChatMessage(IHandleableChatMessage message)
+    {
+        // Filter for System Messages (2122 is often the specific sub-type for retainers)
+        // We check the Type property of the message object
+        
+            // Extract the plain text from the SeString Message property
+            string msgText = message.Message.TextValue;
+
+            if (msgText.Contains("have sold for"))
+            {
+            var match = Regex.Match(msgText, @"sold for ([\d,]+) gil");
+
+            if (match.Success)
+            {
+                string cleanValue = match.Groups[1].Value.Replace(",", "");
+
+                if (int.TryParse(cleanValue, out int gilAmount))
+                {
+                    Log.Debug($"[Sale Detected] Earned: {gilAmount} Gil");
+                    var cid = PlayerState.ContentId;
+                    CharacterStats stats = Configuration.GetStats(cid);
+                    stats.TotalGilMade += gilAmount;
+
+                }
+            }
+        }
+    }
+
+    public async Task SendGilUpdate(string msgText, int gilAmount, int TotalGilMade)
+    {
+        var st = DateTime.UtcNow;
+        try
+        {
+            Log.Debug("Send message...Gil earned");
+            string message = $"--------------\n"+st+"\nUpdate\n{PlayerState.CharacterName}\n" + msgText + "\nGIL_AMOUNT: " + gilAmount +"\nTOTAL_GIL_MADE: " + TotalGilMade;
+            await _discordWebhook.Send(message);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug($"Webhook failed: {ex.Message}");
+        }
     }
 
     public void OnUpdate(IFramework framework)
@@ -159,7 +206,8 @@ public sealed class Plugin : IDalamudPlugin
       
         Explosion.Explode();
     }
-public async Task SendPeriodicUpdate()
+
+    public async Task SendPeriodicUpdate()
     {
         if (_discordWebhook == null) return;
 
@@ -325,6 +373,7 @@ public async Task SendPeriodicUpdate()
         CommandManager.RemoveHandler(CommandName);
 
         Framework.Update -= OnUpdate;
+        ChatGui.ChatMessage -= OnChatMessage;
     }
 
     private void OnCommand(string command, string args)
