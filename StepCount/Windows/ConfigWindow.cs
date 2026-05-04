@@ -82,7 +82,12 @@ public class ConfigWindow : Window, IDisposable
         {
             _ = plugin.SendPeriodicUpdate();
         }
-
+        var DagobertEnabled = stats.DagobertEnabled;
+        if (ImGui.Checkbox("DagobertEnabled", ref DagobertEnabled))
+        {
+            stats.DagobertEnabled = DagobertEnabled;
+            configuration.Save();
+        }
 
         /*if (ImGui.Button("command?!"))
         {

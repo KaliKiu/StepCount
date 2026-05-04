@@ -78,6 +78,7 @@ public sealed class Plugin : IDalamudPlugin
     private DateTime _lastFetch = DateTime.MinValue;
     private DateTime _lastRoost = DateTime.MinValue;
     private DateTime _lastWebHook = DateTime.MinValue;
+    private DateTime _lastDagobert = DateTime.MinValue;
 
     private WebHook? _discordWebhook;
 
@@ -90,7 +91,9 @@ public sealed class Plugin : IDalamudPlugin
     private const uint WM_KEYUP = 0x0101;
     private const int VK_W = 0x57;
     private const int VK_4 = 0x34;
+    private const int VK_Q = 0x51;
     private int count = 1;
+    private bool _isKeyDagobertDown = false;
     private bool _isKeyDown = false;
 
     private const int TGP = 12678;
@@ -129,10 +132,6 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnChatMessage(IHandleableChatMessage message)
     {
-        // Filter for System Messages (2122 is often the specific sub-type for retainers)
-        // We check the Type property of the message object
-        
-            // Extract the plain text from the SeString Message property
             string msgText = message.Message.TextValue;
 
             if (msgText.Contains("have sold for"))
@@ -149,7 +148,7 @@ public sealed class Plugin : IDalamudPlugin
                     var cid = PlayerState.ContentId;
                     CharacterStats stats = Configuration.GetStats(cid);
                     stats.TotalGilMade += gilAmount;
-
+                    SendGilUpdate(msgText, gilAmount, stats.TotalGilMade);  
                 }
             }
         }
@@ -160,7 +159,7 @@ public sealed class Plugin : IDalamudPlugin
         var st = DateTime.UtcNow;
         try
         {
-            Log.Debug("Send message...Gil earned");
+            Log.Debug("Send message...Gil earned "+TotalGilMade);
             string message = $"--------------\n"+st+"\nUpdate\n{PlayerState.CharacterName}\n" + msgText + "\nGIL_AMOUNT: " + gilAmount +"\nTOTAL_GIL_MADE: " + TotalGilMade;
             await _discordWebhook.Send(message);
         }
@@ -193,7 +192,7 @@ public sealed class Plugin : IDalamudPlugin
             _lastWebHook = DateTime.Now; // Reset the timer
 
             // Call the async send method without blocking the game thread
-            _ = SendPeriodicUpdate();
+
         }
         if (DateTime.Now - _lastFetch > TimeSpan.FromSeconds(0.3))
         {
@@ -203,7 +202,12 @@ public sealed class Plugin : IDalamudPlugin
             //Log.Debug("Fetching new territory" + (int)(DateTime.Now - _lastRoost).TotalSeconds);
             _lastFetch = DateTime.Now;
         }
-      
+        if(((DateTime.Now - _lastDagobert > TimeSpan.FromSeconds(600)) && stats.DagobertEnabled) || (_isKeyDagobertDown&& DateTime.Now - _lastDagobert > TimeSpan.FromSeconds(0.2)))
+        {
+            _lastDagobert = DateTime.Now;
+            Dagobert();
+        }
+
         Explosion.Explode();
     }
 
@@ -220,7 +224,6 @@ public sealed class Plugin : IDalamudPlugin
         var st = DateTime.UtcNow;
         try
         {
-            Log.Debug("Send message... DC HANNA MY LOVE");
             string message = $"--------------\nUpdate\n{PlayerState.CharacterName}\n" + zoneName + "/"+ territoryId+"\n" + st + "\nLast InnTime: " + (int)(DateTime.Now - _lastRoost).TotalSeconds + " Seconds\n_TGC_Count: " + GetItemCount(TGP);
             await _discordWebhook.Send(message);
         }
@@ -285,6 +288,28 @@ public sealed class Plugin : IDalamudPlugin
             _lastCommand = DateTime.Now;
             SendGameCommand("/fc meow");
         }
+    }
+    public void Dagobert()
+    {
+        IntPtr hWnd = Process.GetCurrentProcess().MainWindowHandle;
+        if (hWnd == IntPtr.Zero) return;
+
+        int currentKey = VK_Q;
+
+        if (!_isKeyDagobertDown)
+        {
+            PostMessage(hWnd, WM_KEYDOWN, (IntPtr)currentKey, IntPtr.Zero);
+            _isKeyDagobertDown = true;
+            Log.Debug($"Pressing: {currentKey}");
+        }
+        else
+        {
+            PostMessage(hWnd, WM_KEYUP, (IntPtr)currentKey, IntPtr.Zero);
+            _isKeyDagobertDown = false;
+            count++; // Only move to the next key AFTER we released the current one
+            Log.Debug($"Releasing: {currentKey}");
+        }
+
     }
 
     public unsafe void SendGameCommand(string command)

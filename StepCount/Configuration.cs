@@ -14,6 +14,7 @@ public class CharacterStats
     public string WebHookUrl { get; set; } = "";
     public bool WebHookEnabled { get; set; } = true;
     public int TotalGilMade { get; set; } = 0;
+    public bool DagobertEnabled { get; set; } = false;
 }
 //meow
 [Serializable]
